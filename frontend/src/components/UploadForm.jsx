@@ -120,117 +120,182 @@ const UploadForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center py-12 px-4">
+    <div className="min-h-screen flex flex-col items-center py-12 px-4">
 
       {/* MAIN CARD */}
-      <div className="w-full max-w-3xl bg-white shadow-xl rounded-3xl p-10">
+      <div className="w-full max-w-4xl bg-white/90 backdrop-blur shadow-xl rounded-3xl p-10 border border-slate-200/70">
 
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-slate-800">
-            Medical Report Upload
-          </h2>
-          <p className="text-slate-500 mt-2">
-            Upload patient records and analyze with AI
-          </p>
+        <div className="flex items-start justify-between gap-6 mb-8">
+          <div className="flex items-start gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-sky-600 text-white flex items-center justify-center shadow-md">
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m7-7v14m8-5V7a2 2 0 00-2-2h-3.5a2 2 0 01-1.6-.8l-.8-1.067A2 2 0 0010.5 2H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2v-6z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+                Patient Report Intake
+              </h2>
+              <p className="text-slate-600 mt-1">
+                Upload a medical report to extract key data and generate an AI-assisted clinical summary.
+              </p>
+            </div>
+          </div>
+
+          <div className="hidden md:flex items-center gap-2 text-xs font-semibold text-slate-600 bg-slate-50 border border-slate-200 rounded-full px-3 py-2">
+            <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            Secure upload
+          </div>
         </div>
 
         {message.text && (
           <div
-            className={`p-4 rounded-lg mb-6 text-sm font-medium ${
+            className={`p-4 rounded-2xl mb-6 text-sm font-semibold border ${
               message.type === "success"
-                ? "bg-green-50 text-green-700"
-                : "bg-red-50 text-red-700"
+                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                : "bg-rose-50 text-rose-800 border-rose-200"
             }`}
           >
             {message.text}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-8">
 
-          <div className="grid md:grid-cols-2 gap-6">
-            <input
-              type="text"
-              name="patientName"
-              placeholder="Patient Name"
-              value={formData.patientName}
-              onChange={handleInputChange}
-              required
-              className="input"
-            />
+          {/* Patient information */}
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 md:p-8 shadow-sm">
+            <div className="flex items-center justify-between gap-4 mb-5">
+              <div className="flex items-center gap-2">
+                <svg className="h-5 w-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 14a4 4 0 10-8 0v6h8v-6zM12 12a4 4 0 100-8 4 4 0 000 8z" />
+                </svg>
+                <h3 className="text-lg font-bold text-slate-900">Patient Information</h3>
+              </div>
+              <span className="text-xs font-semibold text-slate-500">Required</span>
+            </div>
 
-            <input
-              type="text"
-              name="patientId"
-              placeholder="Patient ID"
-              value={formData.patientId}
-              onChange={handleInputChange}
-              required
-              className="input"
-            />
-          </div>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Patient name</label>
+                <input
+                  type="text"
+                  name="patientName"
+                  placeholder="e.g., Ashiya"
+                  value={formData.patientName}
+                  onChange={handleInputChange}
+                  required
+                  className="input"
+                />
+              </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            <input
-              type="text"
-              name="reportName"
-              placeholder="Report Title"
-              value={formData.reportName}
-              onChange={handleInputChange}
-              required
-              className="input"
-            />
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Patient ID</label>
+                <input
+                  type="text"
+                  name="patientId"
+                  placeholder="e.g., OPD-10293"
+                  value={formData.patientId}
+                  onChange={handleInputChange}
+                  required
+                  className="input"
+                />
+              </div>
+            </div>
+          </section>
 
-            <input
-              type="date"
-              name="reportDate"
-              value={formData.reportDate}
-              onChange={handleInputChange}
-              required
-              className="input"
-            />
-          </div>
+          {/* Report details */}
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 md:p-8 shadow-sm">
+            <div className="flex items-center gap-2 mb-5">
+              <svg className="h-5 w-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" />
+              </svg>
+              <h3 className="text-lg font-bold text-slate-900">Report Details</h3>
+            </div>
 
-          <select
-            name="reportType"
-            value={formData.reportType}
-            onChange={handleInputChange}
-            className="input"
-          >
-            <option>Lab Report</option>
-            <option>Prescription</option>
-            <option>Scan Report</option>
-          </select>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Report title</label>
+                <input
+                  type="text"
+                  name="reportName"
+                  placeholder="e.g., CBC / Blood Work"
+                  value={formData.reportName}
+                  onChange={handleInputChange}
+                  required
+                  className="input"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Report date</label>
+                <input
+                  type="date"
+                  name="reportDate"
+                  value={formData.reportDate}
+                  onChange={handleInputChange}
+                  required
+                  className="input"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Report type</label>
+              <select
+                name="reportType"
+                value={formData.reportType}
+                onChange={handleInputChange}
+                className="input"
+              >
+                <option>Lab Report</option>
+                <option>Prescription</option>
+                <option>Scan Report</option>
+              </select>
+            </div>
+          </section>
 
           {/* Upload Area */}
-          <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-indigo-500 transition">
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 md:p-8 shadow-sm">
+            <div className="flex items-center gap-2 mb-5">
+              <svg className="h-5 w-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M7 10l5-5m0 0l5 5m-5-5v12" />
+              </svg>
+              <h3 className="text-lg font-bold text-slate-900">Upload & Processing</h3>
+            </div>
 
-  <label className="cursor-pointer bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700">
-    Choose File
-    <input
-      type="file"
-      accept=".pdf,.jpg,.jpeg,.png"
-      onChange={handleFileChange}
-      className="hidden"
-      required
-    />
-  </label>
+            <div className="border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center bg-slate-50/40 hover:bg-white hover:border-sky-400 transition">
+              <label className="inline-flex cursor-pointer items-center gap-2 bg-sky-600 text-white px-6 py-3 rounded-2xl hover:bg-sky-700 shadow-md">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Select report file
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </label>
 
-  {file && (
-    <p className="mt-3 text-sm text-slate-600">{file.name}</p>
-  )}
-
-  <p className="text-sm text-slate-500 mt-2">
-    Supports PDF, JPG, PNG up to 5MB
-  </p>
-
-</div>
+              {file ? (
+                <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-slate-700 bg-white border border-slate-200 px-4 py-2 rounded-full">
+                  <svg className="h-4 w-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828L18 9.828a4 4 0 10-5.656-5.656L6.343 10.172a6 6 0 108.485 8.485L20 13" />
+                  </svg>
+                  {file.name}
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-slate-600">
+                  Accepted: PDF, JPG, PNG (up to 5MB)
+                </p>
+              )}
+            </div>
 
           {/* Upload Progress */}
           {uploading && (
-            <div className="w-full bg-slate-200 rounded-full h-3">
+            <div className="w-full bg-slate-200 rounded-full h-3 mt-5 overflow-hidden">
               <div
-                className="bg-indigo-600 h-3 rounded-full transition-all"
+                className="bg-sky-600 h-3 rounded-full transition-all"
                 style={{ width: `${uploadProgress}%` }}
               ></div>
             </div>
@@ -239,42 +304,58 @@ const UploadForm = () => {
           <button
             type="submit"
             disabled={uploading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-xl font-semibold text-lg transition"
+            className="w-full bg-sky-600 hover:bg-sky-700 text-white py-4 rounded-2xl font-bold text-lg transition shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {uploading ? `Uploading ${uploadProgress}%` : "Submit Report"}
           </button>
+          </section>
         </form>
       </div>
 
       {/* Extracted Text */}
       {extractedText && (
-        <div className="w-full max-w-4xl mt-10 bg-white p-8 rounded-3xl shadow-lg">
+        <div className="w-full max-w-4xl mt-10 bg-white/90 backdrop-blur p-8 rounded-3xl shadow-lg border border-slate-200/70">
 
-          <h3 className="text-xl font-semibold mb-4 text-slate-700">
-            Extracted Data
-          </h3>
+          <div className="flex items-start justify-between gap-6 mb-4">
+            <div>
+              <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">
+                Extracted Report Text
+              </h3>
+              <p className="text-sm text-slate-600 mt-1">
+                Review extracted content before generating the AI summary.
+              </p>
+            </div>
+            <div className="hidden md:flex items-center gap-2 text-xs font-semibold text-slate-600 bg-slate-50 border border-slate-200 rounded-full px-3 py-2">
+              <span className="inline-flex h-2 w-2 rounded-full bg-sky-500" />
+              Ready for analysis
+            </div>
+          </div>
 
-          <pre className="bg-slate-100 p-4 rounded-lg text-sm max-h-60 overflow-auto">
+          <pre className="bg-slate-50 p-5 rounded-2xl text-sm max-h-60 overflow-auto leading-relaxed text-slate-800">
             {extractedText}
           </pre>
 
-          <div className="flex gap-4 mt-6">
-
-            <select
-              value={targetLanguage}
-              onChange={(e) => setTargetLanguage(e.target.value)}
-              className="input"
-            >
-              <option>English</option>
-              <option>Spanish</option>
-              <option>Hindi</option>
-              <option>French</option>
-            </select>
+          <div className="grid md:grid-cols-3 gap-4 mt-6 items-end">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Target language
+              </label>
+              <select
+                value={targetLanguage}
+                onChange={(e) => setTargetLanguage(e.target.value)}
+                className="input"
+              >
+                <option>English</option>
+                <option>Spanish</option>
+                <option>Hindi</option>
+                <option>French</option>
+              </select>
+            </div>
 
             <button
               onClick={handleAnalyze}
               disabled={analyzing}
-              className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700"
+              className="w-full bg-slate-900 hover:bg-slate-950 text-white px-6 py-4 rounded-2xl font-bold shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {analyzing ? "Analyzing..." : "Generate Analysis"}
             </button>
@@ -287,9 +368,11 @@ const UploadForm = () => {
 
               {/* Lab Values Cards */}
               {analysisResult.structuredLabValues && analysisResult.structuredLabValues.length > 0 && (
-                <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl shadow-sm">
-                  <h4 className="font-bold text-slate-800 text-lg mb-5 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                <div className="bg-white border border-slate-200 p-6 rounded-3xl shadow-sm">
+                  <h4 className="font-extrabold text-slate-900 text-lg mb-5 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
                     Lab Results Overview
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -298,18 +381,18 @@ const UploadForm = () => {
                       let Icon = null;
                       
                       if (lab.status === "High") {
-                        statusStyles = "bg-red-50 border-red-200 text-red-900";
+                        statusStyles = "bg-rose-50 border-rose-200 text-rose-900";
                         Icon = () => <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>;
                       } else if (lab.status === "Low") {
-                        statusStyles = "bg-orange-50 border-orange-200 text-orange-900";
+                        statusStyles = "bg-amber-50 border-amber-200 text-amber-900";
                         Icon = () => <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>;
                       } else {
-                        statusStyles = "bg-green-50 border-green-200 text-green-900";
+                        statusStyles = "bg-emerald-50 border-emerald-200 text-emerald-900";
                         Icon = () => <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>;
                       }
 
                       return (
-                        <div key={idx} className={`p-4 rounded-xl border ${statusStyles} flex flex-col justify-between hover:-translate-y-1 transition-transform duration-200 shadow-sm`}>
+                        <div key={idx} className={`p-4 rounded-2xl border ${statusStyles} flex flex-col justify-between hover:-translate-y-1 transition-transform duration-200 shadow-sm`}>
                           <div className="flex justify-between items-start mb-2">
                             <span className="font-bold text-sm tracking-wide uppercase opacity-80">{lab.test}</span>
                             <span className="bg-white/60 px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1 shadow-sm border border-black/5">
@@ -329,14 +412,14 @@ const UploadForm = () => {
               )}
 
               <div className="grid md:grid-cols-2 gap-6">
-                <div className="p-6 bg-indigo-50 border border-indigo-100 rounded-2xl shadow-sm">
-                  <h4 className="font-bold text-indigo-900 text-lg mb-3">Executive Summary</h4>
-                  <p className="text-indigo-800 leading-relaxed text-sm">{analysisResult.shortSummary}</p>
+                <div className="p-6 bg-sky-50 border border-sky-100 rounded-3xl shadow-sm">
+                  <h4 className="font-extrabold text-slate-900 text-lg mb-3">Executive Summary</h4>
+                  <p className="text-slate-700 leading-relaxed text-sm">{analysisResult.shortSummary}</p>
                 </div>
 
-                <div className="p-6 bg-emerald-50 border border-emerald-100 rounded-2xl shadow-sm">
-                  <h4 className="font-bold text-emerald-900 text-lg mb-3">Patient Friendly Explanation</h4>
-                  <p className="text-emerald-800 leading-relaxed text-sm">{analysisResult.patientFriendlyExplanation}</p>
+                <div className="p-6 bg-teal-50 border border-teal-100 rounded-3xl shadow-sm">
+                  <h4 className="font-extrabold text-slate-900 text-lg mb-3">Patient-Friendly Explanation</h4>
+                  <p className="text-slate-700 leading-relaxed text-sm">{analysisResult.patientFriendlyExplanation}</p>
                 </div>
               </div>
 
