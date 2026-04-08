@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import axios from "axios";
 
 const UploadForm = () => {
@@ -19,6 +19,13 @@ const UploadForm = () => {
   const [targetLanguage, setTargetLanguage] = useState("English");
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [analysisUpdatedAt, setAnalysisUpdatedAt] = useState("");
+  const [speaking, setSpeaking] = useState(false);
+  const [speechPaused, setSpeechPaused] = useState(false);
+  const [speechSupported] = useState(
+    typeof window !== "undefined" && "speechSynthesis" in window
+  );
+  const utteranceRef = useRef(null);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -26,12 +33,76 @@ const UploadForm = () => {
   };
 
   const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    const allowedTypes = ["application/pdf", "image/jpeg", "image/png"];
+    const maxSizeBytes = 5 * 1024 * 1024;
+
+    if (!allowedTypes.includes(selectedFile.type)) {
+      setMessage({
+        type: "error",
+        text: "Invalid file type. Please upload only PDF, JPG, or PNG.",
+      });
+      e.target.value = "";
+      setFile(null);
+      return;
+    }
+
+    if (selectedFile.size > maxSizeBytes) {
+      setMessage({
+        type: "error",
+        text: "File is too large. Maximum allowed size is 5MB.",
+      });
+      e.target.value = "";
+      setFile(null);
+      return;
+    }
+
+    setMessage({ type: "", text: "" });
+    setFile(selectedFile);
+  };
+
+  const analyzeText = async (textToAnalyze, language = targetLanguage) => {
+    try {
+      setAnalyzing(true);
+      setAnalysisResult(null);
+
+      const response = await axios.post(
+        "http://localhost:5000/api/reports/analyze",
+        {
+          extractedText: textToAnalyze,
+          targetLanguage: language,
+        }
+      );
+
+      if (response.data.analysis) {
+        setAnalysisResult(response.data.analysis);
+        setAnalysisUpdatedAt(new Date().toLocaleTimeString());
+        setMessage({
+          type: "success",
+          text: `Analysis updated in ${language}.`,
+        });
+        return true;
+      }
+      return false;
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text:
+          error.response?.data?.message ||
+          "AI analysis failed. Please try again.",
+      });
+      return false;
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage({ type: "", text: "" });
+    setAnalysisResult(null);
 
     if (!file) {
       setMessage({ type: "error", text: "Please select a file to upload." });
@@ -61,13 +132,23 @@ const UploadForm = () => {
         }
       );
 
-      setMessage({
-        type: "success",
-        text: response.data.message || "Report uploaded successfully!",
-      });
+      const extracted = response.data.extractedText || "";
+      setExtractedText(extracted);
 
-      setExtractedText(response.data.extractedText || "");
-      setAnalysisResult(null);
+      if (!extracted.trim()) {
+        setMessage({
+          type: "error",
+          text: "File uploaded, but no readable text was extracted. Please try a clearer PDF/image.",
+        });
+      } else {
+        const analyzed = await analyzeText(extracted, targetLanguage);
+        setMessage({
+          type: analyzed ? "success" : "error",
+          text: analyzed
+            ? "Report uploaded and analyzed successfully."
+            : "Report uploaded, but AI analysis could not be completed.",
+        });
+      }
 
       setFormData({
         patientName: "",
@@ -94,29 +175,91 @@ const UploadForm = () => {
 
   const handleAnalyze = async () => {
     if (!extractedText) return;
+    await analyzeText(extractedText, targetLanguage);
+  };
 
-    try {
-      setAnalyzing(true);
+  const handleSpeakSummary = () => {
+    if (!analysisResult) return;
 
-      const response = await axios.post(
-        "http://localhost:5000/api/reports/analyze",
-        {
-          extractedText,
-          targetLanguage,
-        }
-      );
-
-      if (response.data.analysis) {
-        setAnalysisResult(response.data.analysis);
-      }
-    } catch (error) {
+    if (!speechSupported) {
       setMessage({
         type: "error",
-        text: "AI analysis failed.",
+        text: "Speech synthesis is not supported in this browser.",
       });
-    } finally {
-      setAnalyzing(false);
+      return;
     }
+
+    const summaryText =
+      analysisResult.translatedSummary ||
+      analysisResult.shortSummary ||
+      analysisResult.patientFriendlyExplanation ||
+      "";
+
+    if (!summaryText.trim()) {
+      setMessage({ type: "error", text: "No summary available to play." });
+      return;
+    }
+
+    const languageVoiceMap = {
+      English: "en-US",
+      Hindi: "hi-IN",
+      Tamil: "ta-IN",
+      Spanish: "es-ES",
+      French: "fr-FR",
+    };
+
+    const languageCode = languageVoiceMap[targetLanguage] || "en-US";
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice =
+      voices.find((voice) =>
+        voice.lang.toLowerCase().startsWith(languageCode.toLowerCase())
+      ) ||
+      voices.find((voice) =>
+        voice.lang.toLowerCase().startsWith(languageCode.slice(0, 2).toLowerCase())
+      ) || null;
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(summaryText);
+    utterance.lang = preferredVoice?.lang || languageCode;
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+    utterance.onstart = () => setSpeaking(true);
+    utterance.onend = () => {
+      setSpeaking(false);
+      setSpeechPaused(false);
+      utteranceRef.current = null;
+    };
+    utterance.onerror = () => {
+      setSpeaking(false);
+      setSpeechPaused(false);
+      utteranceRef.current = null;
+      setMessage({ type: "error", text: "Unable to play audio summary." });
+    };
+    utteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handlePauseSpeech = () => {
+    if (!speechSupported) return;
+    if (!window.speechSynthesis.speaking || window.speechSynthesis.paused) return;
+    window.speechSynthesis.pause();
+    setSpeechPaused(true);
+  };
+
+  const handleResumeSpeech = () => {
+    if (!speechSupported) return;
+    if (!window.speechSynthesis.paused) return;
+    window.speechSynthesis.resume();
+    setSpeechPaused(false);
+  };
+
+  const handleStopSpeech = () => {
+    if (!speechSupported) return;
+    window.speechSynthesis.cancel();
+    utteranceRef.current = null;
+    setSpeaking(false);
+    setSpeechPaused(false);
   };
 
   return (
@@ -348,19 +491,27 @@ const UploadForm = () => {
                 <option>English</option>
                 <option>Spanish</option>
                 <option>Hindi</option>
+                <option>Tamil</option>
                 <option>French</option>
               </select>
             </div>
 
             <button
+              type="button"
               onClick={handleAnalyze}
               disabled={analyzing}
               className="w-full bg-slate-900 hover:bg-slate-950 text-white px-6 py-4 rounded-2xl font-bold shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {analyzing ? "Analyzing..." : "Generate Analysis"}
+              {analyzing ? "Analyzing..." : "Re-Generate Analysis"}
             </button>
 
           </div>
+
+          {analysisUpdatedAt && (
+            <p className="text-xs text-slate-500 mt-3">
+              Last regenerated at: {analysisUpdatedAt}
+            </p>
+          )}
 
           {/* AI Analysis */}
           {analysisResult && (
@@ -421,6 +572,52 @@ const UploadForm = () => {
                   <h4 className="font-extrabold text-slate-900 text-lg mb-3">Patient-Friendly Explanation</h4>
                   <p className="text-slate-700 leading-relaxed text-sm">{analysisResult.patientFriendlyExplanation}</p>
                 </div>
+              </div>
+
+              {analysisResult.translatedSummary && (
+                <div className="p-6 bg-indigo-50 border border-indigo-100 rounded-3xl shadow-sm">
+                  <h4 className="font-extrabold text-slate-900 text-lg mb-3">
+                    Translated Summary ({targetLanguage})
+                  </h4>
+                  <p className="text-slate-700 leading-relaxed text-sm">
+                    {analysisResult.translatedSummary}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={handleSpeakSummary}
+                  disabled={!speechSupported}
+                  className="bg-sky-600 hover:bg-sky-700 text-white px-6 py-3 rounded-xl font-semibold transition shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {speaking && !speechPaused ? "Playing..." : "Play Summary"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePauseSpeech}
+                  disabled={!speechSupported || !speaking || speechPaused}
+                  className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-3 rounded-xl font-semibold transition shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Pause
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResumeSpeech}
+                  disabled={!speechSupported || !speechPaused}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl font-semibold transition shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Resume
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStopSpeech}
+                  disabled={!speechSupported || (!speaking && !speechPaused)}
+                  className="bg-rose-600 hover:bg-rose-700 text-white px-5 py-3 rounded-xl font-semibold transition shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Stop
+                </button>
               </div>
 
             </div>

@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
 
 const reportSchema = new mongoose.Schema({
+    patientName: {
+        type: String,
+        required: true,
+    },
     patientId: {
         type: String,
         required: true,
@@ -25,7 +29,6 @@ const reportSchema = new mongoose.Schema({
         type: String,
         default: '',
     },
-    extractedText: { type: String, default: '' },
     uploadedAt: {
         type: Date,
         default: Date.now,

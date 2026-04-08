@@ -10,11 +10,12 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const uploadDir = path.join(__dirname, 'uploads');
 
 // Middleware
 app.use(cors());
 app.use(express.json()); // To parse JSON request bodies
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // Serve uploaded files statically
+app.use('/uploads', express.static(uploadDir)); // Serve uploaded files statically
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
@@ -24,7 +25,7 @@ mongoose.connect(process.env.MONGO_URI)
 // Multer Setup for File Uploads
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, 'uploads/'); // The folder where files will be saved
+        cb(null, uploadDir); // The folder where files will be saved
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -48,6 +49,40 @@ const upload = multer({
     limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const buildFallbackAnalysis = (text, targetLanguage = 'English') => {
+    const cleanText = (text || '').replace(/\s+/g, ' ').trim();
+    const preview = cleanText.slice(0, 400);
+    const shortSummaryEn = preview
+        ? `Automatic fallback summary: ${preview}${cleanText.length > 400 ? '...' : ''}`
+        : 'No readable report text was available for fallback analysis.';
+
+    const friendlyByLanguage = {
+        English: `In simple words: ${shortSummaryEn}`,
+        Hindi: `सरल भाषा में: ${shortSummaryEn}`,
+        Tamil: `எளிய விளக்கம்: ${shortSummaryEn}`,
+        Spanish: `En palabras sencillas: ${shortSummaryEn}`,
+        French: `En termes simples : ${shortSummaryEn}`
+    };
+
+    const translatedSummary = friendlyByLanguage[targetLanguage] || shortSummaryEn;
+
+    return {
+        keyFindings: [shortSummaryEn],
+        abnormalLabValues: [],
+        possibleHealthConcerns: [],
+        patientFriendlyExplanation: translatedSummary,
+        translatedSummary,
+        shortSummary: shortSummaryEn,
+        structuredLabValues: [],
+        fallback: true,
+        fallbackReason: `Gemini service unavailable or invalid API key. Returned fallback response in ${targetLanguage}.`
+    };
+};
+
 // Import the Report Model
 const Report = require('./models/Report');
 
@@ -61,17 +96,17 @@ app.post('/api/reports/upload', upload.single('file'), async (req, res) => {
         }
 
         const fileUrl = `/uploads/${req.file.filename}`; // Path relative to the server
-        const filePath = path.join(__dirname, 'uploads', req.file.filename);
+        const filePath = path.join(uploadDir, req.file.filename);
         let extractedText = '';
 
         try {
             if (req.file.mimetype === 'application/pdf') {
                 const dataBuffer = fs.readFileSync(filePath);
                 const data = await pdfParse(dataBuffer);
-                extractedText = data.text;
+                extractedText = (data.text || '').trim();
             } else if (req.file.mimetype.startsWith('image/')) {
                 const result = await tesseract.recognize(filePath, 'eng');
-                extractedText = result.data.text;
+                extractedText = (result.data.text || '').trim();
             }
         } catch (extractionError) {
             console.error('Text extraction failed:', extractionError);
@@ -79,6 +114,7 @@ app.post('/api/reports/upload', upload.single('file'), async (req, res) => {
         }
 
         const newReport = new Report({
+            patientName,
             patientId,
             reportName,
             reportType,
@@ -92,7 +128,8 @@ app.post('/api/reports/upload', upload.single('file'), async (req, res) => {
         res.status(201).json({
             message: 'Report uploaded successfully',
             report: newReport,
-            extractedText
+            extractedText,
+            extractionStatus: extractedText ? 'success' : 'empty'
         });
     } catch (error) {
         console.error('Upload Error:', error);
@@ -103,7 +140,7 @@ app.post('/api/reports/upload', upload.single('file'), async (req, res) => {
 // Analyze Endpoint using Gemini SDK
 app.post('/api/reports/analyze', async (req, res) => {
     try {
-        const { extractedText, targetLanguage } = req.body;
+        const { extractedText, targetLanguage = 'English' } = req.body;
 
         if (!extractedText) {
             return res.status(400).json({ message: 'No text provided for analysis.' });
@@ -125,7 +162,8 @@ app.post('/api/reports/analyze', async (req, res) => {
                - "keyFindings": An array of important findings.
                - "abnormalLabValues": An array of abnormal values (e.g., "High Cholesterol: 240 mg/dL"). If none, return an empty array.
                - "possibleHealthConcerns": An array of potential concerns based on the findings.
-               - "patientFriendlyExplanation": A clear, simple explanation understandable by a non-medical person.
+               - "patientFriendlyExplanation": A very simple explanation (friendly tone, 6th-grade reading level, short sentences, no medical jargon unless absolutely necessary, and if jargon appears explain it in plain words).
+               - "translatedSummary": Translate the short summary into ${targetLanguage}. If target language is English, return the same summary text.
                - "shortSummary": A brief 1-2 sentence summary of the overall report.
                - "structuredLabValues": An array of objects extracting testing data. If none, return an empty array. Each object MUST have these exact keys: "test" (string), "value" (string), "normalRange" (string), and "status". "status" MUST be exactly one of: "High", "Low", or "Normal".
             3. Do not include any markdown formatting wrappers like \`\`\`json in the output. Just the raw JSON object.${languagePrompt}
@@ -152,7 +190,12 @@ app.post('/api/reports/analyze', async (req, res) => {
         if (!response.ok) {
             const errorText = await response.text();
             console.error("Gemini API Error:", errorText);
-            return res.status(response.status).json({ message: 'Error from Gemini API.', error: errorText });
+            const fallback = buildFallbackAnalysis(extractedText, targetLanguage);
+            return res.status(200).json({
+                analysis: fallback,
+                warning: 'AI provider unavailable. Returned fallback summary.',
+                providerError: errorText
+            });
         }
 
         const data = await response.json();
@@ -169,7 +212,12 @@ app.post('/api/reports/analyze', async (req, res) => {
             analysisData = JSON.parse(sanitizedText);
         } catch (e) {
             console.error("Failed to parse Gemini response as JSON:", responseText);
-            return res.status(500).json({ message: 'Failed to format analysis response.', rawText: responseText });
+            const fallback = buildFallbackAnalysis(extractedText, targetLanguage);
+            return res.status(200).json({
+                analysis: fallback,
+                warning: 'AI response was malformed. Returned fallback summary.',
+                rawText: responseText
+            });
         }
 
         res.status(200).json({ analysis: analysisData });
